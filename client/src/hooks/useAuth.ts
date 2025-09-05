@@ -10,13 +10,25 @@ export const useAuth = () => {
     queryKey: ["/api/auth/me"],
     queryFn: async () => {
       try {
-        const response = await api.auth.me();
+        const response = await fetch("/api/auth/me", {
+          credentials: "include",
+        });
+        
+        if (response.status === 401) {
+          return null;
+        }
+        
+        if (!response.ok) {
+          return null;
+        }
+        
         const data = await response.json();
         return data.user;
       } catch (error) {
         return null;
       }
     },
+    retry: false,
     staleTime: Infinity,
   });
 
