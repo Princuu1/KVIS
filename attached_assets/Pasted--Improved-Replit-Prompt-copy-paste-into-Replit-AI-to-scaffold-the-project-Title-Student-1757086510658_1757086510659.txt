@@ -1,0 +1,111 @@
+# ✅ Improved Replit Prompt (copy–paste into Replit AI to scaffold the project)
+
+**Title:** Student Attendance & Automation App (Node.js, Express, React/TS, Socket.IO, Supabase, Nodemailer, Face + Geofence)
+
+**Stack:**
+
+* Backend: Node.js + Express (TypeScript). Auth with JWT. Socket.IO server. Nodemailer for SMTP mail.
+* DB: Supabase Postgres (tables below). Use `@supabase/supabase-js` on server with service role key (not on client).
+* Frontend: React + TypeScript + Vite. React Router DOM for routes. Tailwind CSS for responsive UI. Socket.IO client. face-api.js (TensorFlow\.js) for browser-based face recognition. Geolocation API for campus geofence check.
+* Deploy/Run: Single Replit project with `server/` and `client/`. Root `npm run dev` runs both via `concurrently`.
+
+**Core Features:**
+
+1. Registration & Login
+
+   * Registration fields: collegeRollNo (unique), fullName, idPhoto (file upload), studentPhone, parentPhone, studentEmail, parentEmail, password (hash/Bcrypt).
+   * Login: rollNo + password → JWT cookie (httpOnly, secure in prod).
+2. Home dashboard after login
+
+   * Cards linking to: Today Attendance, Attendance History (date to date), College Calendar, Chat Room (real-time), Exam Schedule, Class Syllabus.
+3. Attendance (manual + automated)
+
+   * Manual: mark Present / Absent / Leave (+reason), Save button.
+   * Automated: browser asks location → check within campus geofence (lat, lng, radius meters). Camera opens, live face detection compares against stored face descriptor from idPhoto. If matched and inside geofence, record attendance for that day/time/location with `verified=true`.
+   * Webhook endpoint `/webhooks/attendance` that can receive JSON to auto-mark (for future integrations). Log events.
+4. Chat Room
+
+   * Real-time via Socket.IO. Messages broadcast to room "general". Persist recent 50 messages to `localStorage` (no server persistence for chat as requested). Show online user count.
+5. Attendance History
+
+   * Filter by date range; show totals and percentage; export CSV.
+6. Calendar / Exam Schedule / Syllabus
+
+   * Each is its own route and TSX screen. CRUD minimal forms (create/update/delete items) stored in Supabase tables.
+7. Email Automation
+
+   * When a student is marked **absent for a class** → email student.
+   * If **absent for full day** (no Present across today) → also email parents.
+   * Server background cron (node-cron) runs at 17:30 Asia/Kolkata to evaluate absences and send emails.
+
+**Security & Privacy:**
+
+* Store passwords with bcrypt.
+* JWT in httpOnly cookie. CSRF-protect POST routes with same-site cookies. CORS allow client origin.
+* Never expose Supabase service key to client.
+* Face embeddings stored as Float32 arrays in DB as JSON (`face_descriptor`). Allow re-enroll from Profile.
+
+**Responsive:**
+
+* Mobile-first Tailwind. Fixed header + bottom nav on mobile.
+
+**Nice-to-haves:**
+
+* .env setup
+* ESLint + Prettier
+* Dockerfile optional
+
+---
+
+# 📦 Project Structure
+
+```
+.
+├── server
+│   ├── src
+│   │   ├── index.ts
+│   │   ├── env.ts
+│   │   ├── db.ts
+│   │   ├── mailer.ts
+│   │   ├── auth
+│   │   │   ├── hash.ts
+│   │   │   └── jwt.ts
+│   │   ├── middleware
+│   │   │   └── authGuard.ts
+│   │   ├── routes
+│   │   │   ├── auth.ts
+│   │   │   ├── attendance.ts
+│   │   │   ├── calendar.ts
+│   │   │   ├── exams.ts
+│   │   │   ├── syllabus.ts
+│   │   │   └── webhooks.ts
+│   │   └── jobs
+│   │       └── dailyAbsentCheck.ts
+│   └── tsconfig.json
+├── client
+│   ├── index.html
+│   ├── tsconfig.json
+│   └── src
+│       ├── main.tsx
+│       ├── App.tsx
+│       ├── api.ts
+│       ├── hooks
+│       │   └── useGeoFence.ts
+│       ├── pages
+│       │   ├── Login.tsx
+│       │   ├── Register.tsx
+│       │   ├── Home.tsx
+│       │   ├── AttendanceToday.tsx
+│       │   ├── AttendanceHistory.tsx
+│       │   ├── Calendar.tsx
+│       │   ├── ChatRoom.tsx
+│       │   ├── ExamSchedule.tsx
+│       │   └── Syllabus.tsx
+│       ├── components
+│       │   ├── FaceScanner.tsx
+│       │   └── Nav.tsx
+│       └── styles.css
+├── package.json (workspace/scripts)
+├── .env (created in Replit Secrets)
+└── README.md
+```
