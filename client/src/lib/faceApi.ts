@@ -35,7 +35,7 @@ export const detectFaceFromVideo = async (
       new faceapi.TinyFaceDetectorOptions()
     );
     
-    return detection;
+    return detection || null;
   } catch (error) {
     console.error('Error detecting face:', error);
     return null;

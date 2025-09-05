@@ -82,6 +82,8 @@ export class MemStorage implements IStorage {
       id,
       isActive: true,
       createdAt: new Date(),
+      idPhotoUrl: insertUser.idPhotoUrl ?? null,
+      faceDescriptor: insertUser.faceDescriptor ?? null,
     };
     this.users.set(id, user);
     return user;
@@ -113,6 +115,13 @@ export class MemStorage implements IStorage {
       ...insertRecord,
       id,
       createdAt: new Date(),
+      subject: insertRecord.subject ?? null,
+      method: insertRecord.method ?? null,
+      location: insertRecord.location ?? null,
+      reason: insertRecord.reason ?? null,
+      verified: insertRecord.verified ?? null,
+      latitude: insertRecord.latitude ?? null,
+      longitude: insertRecord.longitude ?? null,
     };
     this.attendanceRecords.set(id, record);
     return record;
@@ -154,6 +163,9 @@ export class MemStorage implements IStorage {
       ...insertEvent,
       id,
       createdAt: new Date(),
+      description: insertEvent.description ?? null,
+      endDate: insertEvent.endDate ?? null,
+      createdBy: insertEvent.createdBy ?? null,
     };
     this.calendarEvents.set(id, event);
     return event;
@@ -183,6 +195,7 @@ export class MemStorage implements IStorage {
       ...insertExam,
       id,
       createdAt: new Date(),
+      instructions: insertExam.instructions ?? null,
     };
     this.examSchedule.set(id, exam);
     return exam;
@@ -217,6 +230,9 @@ export class MemStorage implements IStorage {
       ...insertItem,
       id,
       createdAt: new Date(),
+      description: insertItem.description ?? null,
+      dueDate: insertItem.dueDate ?? null,
+      completed: insertItem.completed ?? null,
     };
     this.syllabus.set(id, item);
     return item;
@@ -238,7 +254,7 @@ export class MemStorage implements IStorage {
   async getChatMessages(room: string, limit: number = 50): Promise<ChatMessage[]> {
     return Array.from(this.chatMessages.values())
       .filter(message => message.room === room)
-      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+      .sort((a, b) => (b.createdAt?.getTime() ?? 0) - (a.createdAt?.getTime() ?? 0))
       .slice(0, limit)
       .reverse();
   }
@@ -249,6 +265,7 @@ export class MemStorage implements IStorage {
       ...insertMessage,
       id,
       createdAt: new Date(),
+      room: insertMessage.room ?? null,
     };
     this.chatMessages.set(id, message);
     return message;

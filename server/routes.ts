@@ -18,8 +18,15 @@ import {
 const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
 const upload = multer({ dest: "uploads/" });
 
+// Extended Request interface for TypeScript
+interface AuthenticatedRequest extends Express.Request {
+  user?: any;
+  file?: any;
+  cookies?: any;
+}
+
 // Middleware to verify JWT token
-const authenticateToken = (req: any, res: any, next: any) => {
+const authenticateToken = (req: AuthenticatedRequest, res: any, next: any) => {
   const token = req.cookies?.token;
   
   if (!token) {
@@ -78,7 +85,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     ws.on('close', () => {
       // Remove client from connected clients
-      for (const [userId, client] of connectedClients.entries()) {
+      for (const [userId, client] of connectedClients) {
         if (client === ws) {
           connectedClients.delete(userId);
           break;
@@ -112,7 +119,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { password, ...userResponse } = user;
       res.status(201).json({ user: userResponse });
     } catch (error) {
-      res.status(400).json({ message: "Registration failed", error: error.message });
+      res.status(400).json({ message: "Registration failed", error: error instanceof Error ? error.message : 'Unknown error' });
     }
   });
 
@@ -148,7 +155,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { password: _, ...userResponse } = user;
       res.json({ user: userResponse });
     } catch (error) {
-      res.status(400).json({ message: "Login failed", error: error.message });
+      res.status(400).json({ message: "Login failed", error: error instanceof Error ? error.message : 'Unknown error' });
     }
   });
 
@@ -167,7 +174,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { password, ...userResponse } = user;
       res.json({ user: userResponse });
     } catch (error) {
-      res.status(500).json({ message: "Failed to get user", error: error.message });
+      res.status(500).json({ message: "Failed to get user", error: error instanceof Error ? error.message : 'Unknown error' });
     }
   });
 
@@ -182,7 +189,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
       res.json({ records });
     } catch (error) {
-      res.status(500).json({ message: "Failed to get attendance records", error: error.message });
+      res.status(500).json({ message: "Failed to get attendance records", error: error instanceof Error ? error.message : 'Unknown error' });
     }
   });
 
@@ -197,7 +204,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const record = await storage.createAttendanceRecord(attendanceData);
       res.status(201).json({ record });
     } catch (error) {
-      res.status(400).json({ message: "Failed to create attendance record", error: error.message });
+      res.status(400).json({ message: "Failed to create attendance record", error: error instanceof Error ? error.message : 'Unknown error' });
     }
   });
 
@@ -206,7 +213,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const stats = await storage.getAttendanceStats(req.user.userId);
       res.json({ stats });
     } catch (error) {
-      res.status(500).json({ message: "Failed to get attendance stats", error: error.message });
+      res.status(500).json({ message: "Failed to get attendance stats", error: error instanceof Error ? error.message : 'Unknown error' });
     }
   });
 
@@ -220,7 +227,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
       res.json({ events });
     } catch (error) {
-      res.status(500).json({ message: "Failed to get calendar events", error: error.message });
+      res.status(500).json({ message: "Failed to get calendar events", error: error instanceof Error ? error.message : 'Unknown error' });
     }
   });
 
@@ -236,7 +243,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const event = await storage.createCalendarEvent(eventData);
       res.status(201).json({ event });
     } catch (error) {
-      res.status(400).json({ message: "Failed to create calendar event", error: error.message });
+      res.status(400).json({ message: "Failed to create calendar event", error: error instanceof Error ? error.message : 'Unknown error' });
     }
   });
 
@@ -246,7 +253,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const exams = await storage.getExamSchedule();
       res.json({ exams });
     } catch (error) {
-      res.status(500).json({ message: "Failed to get exam schedule", error: error.message });
+      res.status(500).json({ message: "Failed to get exam schedule", error: error instanceof Error ? error.message : 'Unknown error' });
     }
   });
 
@@ -260,7 +267,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const exam = await storage.createExam(examData);
       res.status(201).json({ exam });
     } catch (error) {
-      res.status(400).json({ message: "Failed to create exam", error: error.message });
+      res.status(400).json({ message: "Failed to create exam", error: error instanceof Error ? error.message : 'Unknown error' });
     }
   });
 
@@ -270,7 +277,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const syllabus = await storage.getSyllabus();
       res.json({ syllabus });
     } catch (error) {
-      res.status(500).json({ message: "Failed to get syllabus", error: error.message });
+      res.status(500).json({ message: "Failed to get syllabus", error: error instanceof Error ? error.message : 'Unknown error' });
     }
   });
 
@@ -284,7 +291,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const item = await storage.createSyllabusItem(syllabusData);
       res.status(201).json({ item });
     } catch (error) {
-      res.status(400).json({ message: "Failed to create syllabus item", error: error.message });
+      res.status(400).json({ message: "Failed to create syllabus item", error: error instanceof Error ? error.message : 'Unknown error' });
     }
   });
 
@@ -295,7 +302,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const messages = await storage.getChatMessages(room as string, parseInt(limit as string));
       res.json({ messages });
     } catch (error) {
-      res.status(500).json({ message: "Failed to get chat messages", error: error.message });
+      res.status(500).json({ message: "Failed to get chat messages", error: error instanceof Error ? error.message : 'Unknown error' });
     }
   });
 
@@ -314,7 +321,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.json({ message: "Face descriptor updated successfully" });
     } catch (error) {
-      res.status(400).json({ message: "Failed to update face descriptor", error: error.message });
+      res.status(400).json({ message: "Failed to update face descriptor", error: error instanceof Error ? error.message : 'Unknown error' });
     }
   });
 
@@ -340,7 +347,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.status(201).json({ record });
     } catch (error) {
-      res.status(400).json({ message: "Failed to create attendance record", error: error.message });
+      res.status(400).json({ message: "Failed to create attendance record", error: error instanceof Error ? error.message : 'Unknown error' });
     }
   });
 
