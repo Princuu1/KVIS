@@ -10,9 +10,17 @@ import {
   type SyllabusItem,
   type InsertSyllabus,
   type ChatMessage,
-  type InsertChatMessage
+  type InsertChatMessage,
+  users,
+  attendanceRecords,
+  calendarEvents,
+  examSchedule,
+  syllabus,
+  chatMessages
 } from "@shared/schema";
 import { randomUUID } from "crypto";
+import { db } from "./db";
+import { eq, desc, and, gte, lte } from "drizzle-orm";
 
 export interface IStorage {
   // User operations
@@ -272,4 +280,155 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+export class DatabaseStorage implements IStorage {
+  async getUser(id: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user || undefined;
+  }
+
+  async getUserByRollNo(rollNo: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.collegeRollNo, rollNo));
+    return user || undefined;
+  }
+
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.studentEmail, email));
+    return user || undefined;
+  }
+
+  async createUser(insertUser: InsertUser): Promise<User> {
+    const [user] = await db.insert(users).values(insertUser).returning();
+    return user;
+  }
+
+  async updateUser(id: string, updates: Partial<User>): Promise<User | undefined> {
+    const [user] = await db.update(users).set(updates).where(eq(users.id, id)).returning();
+    return user || undefined;
+  }
+
+  async getAttendanceRecords(userId: string, startDate?: Date, endDate?: Date): Promise<AttendanceRecord[]> {
+    const conditions = [eq(attendanceRecords.userId, userId)];
+    
+    if (startDate) {
+      conditions.push(gte(attendanceRecords.date, startDate));
+    }
+    if (endDate) {
+      conditions.push(lte(attendanceRecords.date, endDate));
+    }
+    
+    return await db.select().from(attendanceRecords)
+      .where(and(...conditions))
+      .orderBy(desc(attendanceRecords.date));
+  }
+
+  async createAttendanceRecord(insertRecord: InsertAttendance): Promise<AttendanceRecord> {
+    const [record] = await db.insert(attendanceRecords).values(insertRecord).returning();
+    return record;
+  }
+
+  async getAttendanceStats(userId: string): Promise<{
+    totalPresent: number;
+    totalAbsent: number;
+    totalLeave: number;
+    percentage: number;
+  }> {
+    const records = await this.getAttendanceRecords(userId);
+    const totalPresent = records.filter(r => r.status === 'present').length;
+    const totalAbsent = records.filter(r => r.status === 'absent').length;
+    const totalLeave = records.filter(r => r.status === 'leave').length;
+    const total = records.length;
+    
+    return {
+      totalPresent,
+      totalAbsent,
+      totalLeave,
+      percentage: total > 0 ? Math.round((totalPresent / total) * 100) : 0,
+    };
+  }
+
+  async getCalendarEvents(startDate?: Date, endDate?: Date): Promise<CalendarEvent[]> {
+    const conditions = [];
+    
+    if (startDate) {
+      conditions.push(gte(calendarEvents.date, startDate));
+    }
+    if (endDate) {
+      conditions.push(lte(calendarEvents.date, endDate));
+    }
+    
+    if (conditions.length > 0) {
+      return await db.select().from(calendarEvents)
+        .where(and(...conditions))
+        .orderBy(calendarEvents.date);
+    }
+    
+    return await db.select().from(calendarEvents).orderBy(calendarEvents.date);
+  }
+
+  async createCalendarEvent(insertEvent: InsertCalendarEvent): Promise<CalendarEvent> {
+    const [event] = await db.insert(calendarEvents).values(insertEvent).returning();
+    return event;
+  }
+
+  async updateCalendarEvent(id: string, updates: Partial<CalendarEvent>): Promise<CalendarEvent | undefined> {
+    const [event] = await db.update(calendarEvents).set(updates).where(eq(calendarEvents.id, id)).returning();
+    return event || undefined;
+  }
+
+  async deleteCalendarEvent(id: string): Promise<boolean> {
+    const result = await db.delete(calendarEvents).where(eq(calendarEvents.id, id));
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  async getExamSchedule(): Promise<ExamScheduleItem[]> {
+    return await db.select().from(examSchedule).orderBy(examSchedule.date);
+  }
+
+  async createExam(insertExam: InsertExam): Promise<ExamScheduleItem> {
+    const [exam] = await db.insert(examSchedule).values(insertExam).returning();
+    return exam;
+  }
+
+  async updateExam(id: string, updates: Partial<ExamScheduleItem>): Promise<ExamScheduleItem | undefined> {
+    const [exam] = await db.update(examSchedule).set(updates).where(eq(examSchedule.id, id)).returning();
+    return exam || undefined;
+  }
+
+  async deleteExam(id: string): Promise<boolean> {
+    const result = await db.delete(examSchedule).where(eq(examSchedule.id, id));
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  async getSyllabus(): Promise<SyllabusItem[]> {
+    return await db.select().from(syllabus).orderBy(syllabus.dueDate, syllabus.subject);
+  }
+
+  async createSyllabusItem(insertItem: InsertSyllabus): Promise<SyllabusItem> {
+    const [item] = await db.insert(syllabus).values(insertItem).returning();
+    return item;
+  }
+
+  async updateSyllabusItem(id: string, updates: Partial<SyllabusItem>): Promise<SyllabusItem | undefined> {
+    const [item] = await db.update(syllabus).set(updates).where(eq(syllabus.id, id)).returning();
+    return item || undefined;
+  }
+
+  async deleteSyllabusItem(id: string): Promise<boolean> {
+    const result = await db.delete(syllabus).where(eq(syllabus.id, id));
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  async getChatMessages(room: string, limit: number = 50): Promise<ChatMessage[]> {
+    return await db.select().from(chatMessages)
+      .where(eq(chatMessages.room, room))
+      .orderBy(desc(chatMessages.createdAt))
+      .limit(limit);
+  }
+
+  async createChatMessage(insertMessage: InsertChatMessage): Promise<ChatMessage> {
+    const [message] = await db.insert(chatMessages).values(insertMessage).returning();
+    return message;
+  }
+}
+
+export const storage = new DatabaseStorage();

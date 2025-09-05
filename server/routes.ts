@@ -5,6 +5,7 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import multer from "multer";
 import { storage } from "./storage";
+import { sendWelcomeEmail } from "./emailService";
 import { 
   insertUserSchema, 
   loginSchema, 
@@ -117,6 +118,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Remove password from response
       const { password, ...userResponse } = user;
+      
+      // Send welcome email (don't block response if email fails)
+      sendWelcomeEmail({
+        studentName: user.fullName,
+        studentEmail: user.studentEmail,
+        collegeRollNo: user.collegeRollNo,
+        parentEmail: user.parentEmail,
+      }).catch(error => {
+        console.error('Failed to send welcome email:', error);
+      });
+      
       res.status(201).json({ user: userResponse });
     } catch (error) {
       res.status(400).json({ message: "Registration failed", error: error instanceof Error ? error.message : 'Unknown error' });
