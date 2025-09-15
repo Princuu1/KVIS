@@ -1,3 +1,4 @@
+// client/src/hooks/useSocket.ts
 import { useEffect, useRef, useState } from "react";
 import { io, type Socket } from "socket.io-client";
 import { useAuth } from "@/hooks/useAuth";
@@ -30,6 +31,7 @@ export function useSocket() {
   const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([]);
   const socketRef = useRef<Socket | null>(null);
 
+  // 🔑 Always set VITE_API_HOST in Render to your backend domain (e.g. https://kvis.onrender.com)
   const rawApiHost = (import.meta.env.VITE_API_HOST as string) || "";
   const apiHost = rawApiHost ? rawApiHost.replace(/\/+$/, "") : window.location.origin;
 
@@ -43,6 +45,7 @@ export function useSocket() {
       .toString()
       .trim();
 
+  // Load saved messages
   useEffect(() => {
     if (!user) return;
     const cls = getUserClass();
@@ -57,6 +60,7 @@ export function useSocket() {
     }
   }, [user]);
 
+  // Save messages
   useEffect(() => {
     if (!user) return;
     const cls = getUserClass();
@@ -64,6 +68,7 @@ export function useSocket() {
     localStorage.setItem(`chat_${cls}`, JSON.stringify(messages));
   }, [messages, user]);
 
+  // Setup socket
   useEffect(() => {
     if (!user) return;
     const cls = getUserClass();
@@ -72,7 +77,13 @@ export function useSocket() {
       return;
     }
 
-    const socket = io(apiHost, { transports: ["websocket", "polling"], reconnection: true, withCredentials: true, timeout: 20000 });
+    const socket = io(apiHost, {
+      transports: ["websocket", "polling"],
+      reconnection: true,
+      withCredentials: true,
+      timeout: 20000,
+      path: "/socket.io", // ✅ must match backend
+    });
     socketRef.current = socket;
 
     const joinRoom = () => {
@@ -120,7 +131,9 @@ export function useSocket() {
     socket.on("onlineUsers", (users: OnlineUser[]) => {
       try {
         const cls = getUserClass();
-        const filtered = (users || []).filter((u) => !u.studentClass || u.studentClass === cls);
+        const filtered = (users || []).filter(
+          (u) => !u.studentClass || u.studentClass === cls
+        );
         setOnlineUsers(filtered);
         setOnlineCount(filtered.length);
       } catch (err) {
