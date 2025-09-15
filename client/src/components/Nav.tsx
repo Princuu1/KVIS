@@ -40,7 +40,7 @@ const navItems: NavItem[] = [
   { id: "student-corner", path: "/studentcorner", label: "Student Corner", icon: Users, mobileLabel: "Corner" },
   { id: "syllabus", path: "/syllabus", label: "Syllabus", icon: BookOpen, mobileLabel: "Syllabus" },
   { id: "upcoming", path: "/upcoming", label: "Upcoming", icon: Clock, mobileLabel: "Upcoming" },
-  { id: "escalation", path: "/escalation-matrix", label: "Escalation Matrix", icon: Users, mobileLabel: "Matrix" },
+  { id: "escalation", path: "/escalationmatrix", label: "Escalation Matrix", icon: Users, mobileLabel: "Matrix" },
   { id: "developers", path: "/devlopers", label: "Developers", icon: Users, mobileLabel: "Devs" },
   { id: "feedback", path: "/feedback", label: "Feedback", icon: MessageSquare, mobileLabel: "Feedback" },
 ];
