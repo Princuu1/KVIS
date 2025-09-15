@@ -1,18 +1,15 @@
-import { useAuth } from "@/hooks/useAuth";
+// client/src/components/ProtectedRoute.tsx
+import React, { ReactNode, useEffect } from "react";
 import { useLocation } from "wouter";
-import { useEffect } from "react";
+import { useAuth } from "@/hooks/useAuth";
 
-interface ProtectedRouteProps {
-  children: React.ReactNode;
-}
-
-export default function ProtectedRoute({ children }: ProtectedRouteProps) {
+export default function ProtectedRoute({ children }: { children: ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
   const [, setLocation] = useLocation();
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
-      setLocation('/login');
+      setLocation("/login");
     }
   }, [isAuthenticated, isLoading, setLocation]);
 
@@ -27,9 +24,7 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
     );
   }
 
-  if (!isAuthenticated) {
-    return null;
-  }
+  if (!isAuthenticated) return null;
 
   return <>{children}</>;
 }

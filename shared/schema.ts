@@ -1,8 +1,10 @@
+// server/schema.ts
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, boolean, jsonb, real, integer } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, boolean, jsonb, real } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+// ---------------- USERS ----------------
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   collegeRollNo: text("college_roll_no").notNull().unique(),
@@ -11,6 +13,7 @@ export const users = pgTable("users", {
   parentPhone: text("parent_phone").notNull(),
   studentEmail: text("student_email").notNull().unique(),
   parentEmail: text("parent_email").notNull(),
+  studentClass: text("student_class").notNull(), // ✅ Added studentClass
   password: text("password").notNull(),
   idPhotoUrl: text("id_photo_url"),
   faceDescriptor: jsonb("face_descriptor"),
@@ -18,14 +21,15 @@ export const users = pgTable("users", {
   createdAt: timestamp("created_at").default(sql`now()`),
 });
 
+// ---------------- ATTENDANCE ----------------
 export const attendanceRecords = pgTable("attendance_records", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id),
   date: timestamp("date").notNull(),
-  status: text("status").notNull(), // 'present', 'absent', 'leave'
+  status: text("status").notNull(),
   subject: text("subject"),
   reason: text("reason"),
-  method: text("method"), // 'manual', 'face_recognition', 'geofence'
+  method: text("method"),
   verified: boolean("verified").default(false),
   location: text("location"),
   latitude: real("latitude"),
@@ -33,17 +37,19 @@ export const attendanceRecords = pgTable("attendance_records", {
   createdAt: timestamp("created_at").default(sql`now()`),
 });
 
+// ---------------- CALENDAR ----------------
 export const calendarEvents = pgTable("calendar_events", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   title: text("title").notNull(),
   description: text("description"),
   date: timestamp("date").notNull(),
   endDate: timestamp("end_date"),
-  type: text("type").notNull(), // 'event', 'holiday', 'exam'
+  type: text("type").notNull(),
   createdBy: varchar("created_by").references(() => users.id),
   createdAt: timestamp("created_at").default(sql`now()`),
 });
 
+// ---------------- EXAMS ----------------
 export const examSchedule = pgTable("exam_schedule", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   subject: text("subject").notNull(),
@@ -55,6 +61,7 @@ export const examSchedule = pgTable("exam_schedule", {
   createdAt: timestamp("created_at").default(sql`now()`),
 });
 
+// ---------------- SYLLABUS ----------------
 export const syllabus = pgTable("syllabus", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   subject: text("subject").notNull(),
@@ -65,6 +72,7 @@ export const syllabus = pgTable("syllabus", {
   createdAt: timestamp("created_at").default(sql`now()`),
 });
 
+// ---------------- CHAT ----------------
 export const chatMessages = pgTable("chat_messages", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id),
@@ -73,12 +81,12 @@ export const chatMessages = pgTable("chat_messages", {
   createdAt: timestamp("created_at").default(sql`now()`),
 });
 
-// Insert schemas
-export const insertUserSchema = createInsertSchema(users).omit({
-  id: true,
-  createdAt: true,
-  isActive: true,
-});
+// ---------------- INSERT SCHEMAS ----------------
+export const insertUserSchema = createInsertSchema(users)
+  .omit({ id: true, createdAt: true, isActive: true })
+  .extend({
+    studentClass: z.string().min(1, "Class is required"), // ✅ Zod validation
+  });
 
 export const insertAttendanceSchema = createInsertSchema(attendanceRecords).omit({
   id: true,
@@ -105,13 +113,13 @@ export const insertChatMessageSchema = createInsertSchema(chatMessages).omit({
   createdAt: true,
 });
 
-// Login schema
+// ---------------- LOGIN SCHEMA ----------------
 export const loginSchema = z.object({
   collegeRollNo: z.string().min(1, "Roll number is required"),
   password: z.string().min(1, "Password is required"),
 });
 
-// Types
+// ---------------- TYPES ----------------
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type InsertAttendance = z.infer<typeof insertAttendanceSchema>;

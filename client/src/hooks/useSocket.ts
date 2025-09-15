@@ -1,108 +1,171 @@
 import { useEffect, useRef, useState } from "react";
-import { useAuth } from "./useAuth";
+import { io, type Socket } from "socket.io-client";
+import { useAuth } from "@/hooks/useAuth";
 
-interface ChatMessage {
+export interface ChatMessage {
   id: string;
   userId: string;
+  fullName: string;
   message: string;
-  room: string;
+  studentClass?: string;
+  student_class?: string;
   createdAt: string;
+  idPhotoUrl?: string;
 }
 
-export const useSocket = () => {
+export interface OnlineUser {
+  userId: string;
+  fullName?: string;
+  sockets: string[];
+  socketsCount: number;
+  idPhotoUrl?: string;
+  studentClass?: string;
+}
+
+export function useSocket() {
   const { user } = useAuth();
   const [isConnected, setIsConnected] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [onlineCount, setOnlineCount] = useState(0);
-  const ws = useRef<WebSocket | null>(null);
+  const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([]);
+  const socketRef = useRef<Socket | null>(null);
 
-  const connect = () => {
-    if (!user) return;
+  const rawApiHost = (import.meta.env.VITE_API_HOST as string) || "";
+  const apiHost = rawApiHost ? rawApiHost.replace(/\/+$/, "") : window.location.origin;
 
-    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const wsUrl = `${protocol}//${window.location.host}/ws`;
-    
-    ws.current = new WebSocket(wsUrl);
-
-    ws.current.onopen = () => {
-      console.log("WebSocket connected");
-      setIsConnected(true);
-      
-      // Join with user ID
-      if (ws.current) {
-        ws.current.send(JSON.stringify({
-          type: 'join',
-          userId: user.id
-        }));
-      }
-    };
-
-    ws.current.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        
-        if (data.type === 'chat') {
-          setMessages(prev => [...prev, data.message]);
-        } else if (data.type === 'onlineCount') {
-          setOnlineCount(data.count);
-        }
-      } catch (error) {
-        console.error("Error parsing WebSocket message:", error);
-      }
-    };
-
-    ws.current.onclose = () => {
-      console.log("WebSocket disconnected");
-      setIsConnected(false);
-      
-      // Attempt to reconnect after 3 seconds
-      setTimeout(() => {
-        if (user) {
-          connect();
-        }
-      }, 3000);
-    };
-
-    ws.current.onerror = (error) => {
-      console.error("WebSocket error:", error);
-      setIsConnected(false);
-    };
-  };
-
-  const sendMessage = (message: string, room: string = 'general') => {
-    if (ws.current?.readyState === WebSocket.OPEN && user) {
-      ws.current.send(JSON.stringify({
-        type: 'chat',
-        userId: user.id,
-        text: message,
-        room
-      }));
-    }
-  };
-
-  const disconnect = () => {
-    if (ws.current) {
-      ws.current.close();
-      ws.current = null;
-    }
-  };
+  const getUserClass = () =>
+    (
+      (user as any)?.student_class ??
+      (user as any)?.studentClass ??
+      (user as any)?.student_Class ??
+      ""
+    )
+      .toString()
+      .trim();
 
   useEffect(() => {
-    if (user) {
-      connect();
+    if (!user) return;
+    const cls = getUserClass();
+    if (!cls) return;
+    const saved = localStorage.getItem(`chat_${cls}`);
+    if (saved) {
+      try {
+        setMessages(JSON.parse(saved));
+      } catch {
+        setMessages([]);
+      }
     }
-
-    return () => {
-      disconnect();
-    };
   }, [user]);
 
-  return {
-    isConnected,
-    messages,
-    onlineCount,
-    sendMessage,
-    connect,
-    disconnect,
+  useEffect(() => {
+    if (!user) return;
+    const cls = getUserClass();
+    if (!cls) return;
+    localStorage.setItem(`chat_${cls}`, JSON.stringify(messages));
+  }, [messages, user]);
+
+  useEffect(() => {
+    if (!user) return;
+    const cls = getUserClass();
+    if (!cls) {
+      console.warn("[useSocket] user has no class, socket not started");
+      return;
+    }
+
+    const socket = io(apiHost, { transports: ["websocket", "polling"], reconnection: true, withCredentials: true, timeout: 20000 });
+    socketRef.current = socket;
+
+    const joinRoom = () => {
+      const className = getUserClass();
+      if (!className) return;
+      socket.emit("joinRoom", {
+        student_class: className,
+        studentClass: className,
+        fullName: user.fullName,
+        userId: user.id,
+        idPhotoUrl: (user as any)?.idPhotoUrl ?? "",
+      });
+    };
+
+    socket.on("connect", () => {
+      console.log("[socket] connected", socket.id);
+      setIsConnected(true);
+      joinRoom();
+    });
+
+    socket.on("reconnect", (attempt) => {
+      console.log("[socket] reconnected after", attempt, socket.id);
+      joinRoom();
+    });
+
+    socket.on("disconnect", (reason) => {
+      console.log("[socket] disconnected", reason);
+      setIsConnected(false);
+    });
+
+    socket.on("chatMessage", (msg: ChatMessage) => {
+      try {
+        const myClass = getUserClass();
+        const msgClass = (msg.student_class ?? msg.studentClass ?? "").toString().trim();
+        if (!msgClass || msgClass !== myClass) return;
+        setMessages((prev) => {
+          if (prev.find((m) => m.id === msg.id)) return prev;
+          return [...prev, msg];
+        });
+      } catch (err) {
+        console.error("[socket] chatMessage handler error", err);
+      }
+    });
+
+    socket.on("onlineUsers", (users: OnlineUser[]) => {
+      try {
+        const cls = getUserClass();
+        const filtered = (users || []).filter((u) => !u.studentClass || u.studentClass === cls);
+        setOnlineUsers(filtered);
+        setOnlineCount(filtered.length);
+      } catch (err) {
+        console.error("[socket] onlineUsers handler error", err);
+      }
+    });
+
+    socket.on("onlineCount", (count: number) => {
+      setOnlineCount(typeof count === "number" ? count : onlineCount);
+    });
+
+    socket.on("connect_error", (err) => {
+      console.error("[socket] connect_error", err);
+    });
+
+    return () => {
+      socket.off("connect");
+      socket.off("reconnect");
+      socket.off("disconnect");
+      socket.off("connect_error");
+      socket.off("chatMessage");
+      socket.off("onlineUsers");
+      socket.off("onlineCount");
+      socket.disconnect();
+      socketRef.current = null;
+    };
+  }, [user, apiHost]);
+
+  const sendMessage = (text: string) => {
+    const socket = socketRef.current;
+    if (!socket || !user) return;
+    const className = getUserClass();
+    if (!className) return;
+    const msg: ChatMessage = {
+      id: `${socket.id}_${Date.now()}`,
+      userId: user.id,
+      fullName: user.fullName,
+      message: text,
+      studentClass: className,
+      student_class: className,
+      createdAt: new Date().toISOString(),
+      idPhotoUrl: (user as any)?.idPhotoUrl ?? "",
+    };
+    socket.emit("chatMessage", msg);
   };
-};
+
+  return { isConnected, messages, onlineCount, onlineUsers, sendMessage };
+}

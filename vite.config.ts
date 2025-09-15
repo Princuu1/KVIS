@@ -33,5 +33,13 @@ export default defineConfig({
       strict: true,
       deny: ["**/.*"],
     },
+    proxy: {
+      // 👇 Add this block
+      "/api": {
+        target: "http://localhost:5000", // your Express backend
+        changeOrigin: true,
+        secure: false,
+      },
+    },
   },
 });

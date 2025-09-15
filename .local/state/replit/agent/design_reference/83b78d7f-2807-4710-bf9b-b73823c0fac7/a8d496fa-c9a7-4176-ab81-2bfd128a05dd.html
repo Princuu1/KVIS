@@ -1,0 +1,1036 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Attendance & Automation App</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+    tailwind.config = {
+        theme: {
+            extend: {
+                borderRadius: {
+                    lg: "var(--radius)",
+                    md: "calc(var(--radius) - 2px)",
+                    sm: "calc(var(--radius) - 4px)",
+                },
+                colors: {
+                    background: "var(--background)",
+                    foreground: "var(--foreground)",
+                    card: {
+                        DEFAULT: "var(--card)",
+                        foreground: "var(--card-foreground)",
+                    },
+                    popover: {
+                        DEFAULT: "var(--popover)",
+                        foreground: "var(--popover-foreground)",
+                    },
+                    primary: {
+                        DEFAULT: "var(--primary)",
+                        foreground: "var(--primary-foreground)",
+                    },
+                    secondary: {
+                        DEFAULT: "var(--secondary)",
+                        foreground: "var(--secondary-foreground)",
+                    },
+                    muted: {
+                        DEFAULT: "var(--muted)",
+                        foreground: "var(--muted-foreground)",
+                    },
+                    accent: {
+                        DEFAULT: "var(--accent)",
+                        foreground: "var(--accent-foreground)",
+                    },
+                    destructive: {
+                        DEFAULT: "var(--destructive)",
+                        foreground: "var(--destructive-foreground)",
+                    },
+                    border: "var(--border)",
+                    input: "var(--input)",
+                    ring: "var(--ring)",
+                }
+            },
+            fontFamily: {
+                sans: ["Inter", "system-ui", "sans-serif"],
+            }
+        }
+    };
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --background: hsl(210 40% 98%);
+            --foreground: hsl(222 84% 5%);
+            --card: hsl(0 0% 100%);
+            --card-foreground: hsl(222 84% 5%);
+            --popover: hsl(0 0% 100%);
+            --popover-foreground: hsl(222 84% 5%);
+            --primary: hsl(207 90% 54%);
+            --primary-foreground: hsl(210 40% 98%);
+            --secondary: hsl(187 71% 38%);
+            --secondary-foreground: hsl(222 84% 5%);
+            --muted: hsl(210 40% 96%);
+            --muted-foreground: hsl(215 16% 47%);
+            --accent: hsl(210 40% 96%);
+            --accent-foreground: hsl(222 84% 5%);
+            --destructive: hsl(0 84% 60%);
+            --destructive-foreground: hsl(210 40% 98%);
+            --border: hsl(214 32% 91%);
+            --input: hsl(214 32% 91%);
+            --ring: hsl(207 90% 54%);
+            --radius: 8px;
+        }
+
+        .dark {
+            --background: hsl(222 84% 5%);
+            --foreground: hsl(210 40% 98%);
+            --card: hsl(222 84% 8%);
+            --card-foreground: hsl(210 40% 98%);
+            --popover: hsl(222 84% 8%);
+            --popover-foreground: hsl(210 40% 98%);
+            --primary: hsl(207 90% 54%);
+            --primary-foreground: hsl(222 84% 5%);
+            --secondary: hsl(217 32% 17%);
+            --secondary-foreground: hsl(210 40% 98%);
+            --muted: hsl(217 32% 17%);
+            --muted-foreground: hsl(215 20% 65%);
+            --accent: hsl(217 32% 17%);
+            --accent-foreground: hsl(210 40% 98%);
+            --destructive: hsl(0 62% 30%);
+            --destructive-foreground: hsl(210 40% 98%);
+            --border: hsl(217 32% 17%);
+            --input: hsl(217 32% 17%);
+            --ring: hsl(207 90% 54%);
+        }
+
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+        }
+
+        .screen {
+            display: none;
+        }
+
+        .screen.active {
+            display: block;
+        }
+
+        .face-scanner-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 1000;
+            display: none;
+        }
+
+        .face-scanner-overlay.active {
+            display: flex;
+        }
+
+        .pulse {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: .5;
+            }
+        }
+
+        .chat-messages {
+            max-height: calc(100vh - 280px);
+            overflow-y: auto;
+        }
+
+        @media (min-width: 768px) {
+            .mobile-nav {
+                display: none;
+            }
+            
+            .desktop-nav {
+                display: block !important;
+            }
+        }
+    </style>
+</head>
+<body class="bg-background text-foreground min-h-screen">
+    <!-- Mobile Header -->
+    <header class="fixed top-0 left-0 right-0 bg-card border-b border-border z-50 md:relative">
+        <div class="flex items-center justify-between px-4 py-3">
+            <div class="flex items-center space-x-3">
+                <div class="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+                    <i class="fas fa-graduation-cap text-primary-foreground text-sm"></i>
+                </div>
+                <h1 class="text-lg font-semibold text-foreground">AttendanceApp</h1>
+            </div>
+            <div class="flex items-center space-x-3">
+                <button class="p-2 hover:bg-accent rounded-lg" onclick="toggleTheme()">
+                    <i class="fas fa-moon text-muted-foreground"></i>
+                </button>
+                <button class="p-2 hover:bg-accent rounded-lg">
+                    <i class="fas fa-bell text-muted-foreground"></i>
+                </button>
+                <div class="w-8 h-8 bg-secondary rounded-full flex items-center justify-center">
+                    <span class="text-xs font-medium text-secondary-foreground">RJ</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Desktop Sidebar Navigation -->
+    <nav class="desktop-nav hidden fixed left-0 top-0 bottom-0 w-64 bg-card border-r border-border z-40">
+        <div class="p-6">
+            <div class="flex items-center space-x-3 mb-8">
+                <div class="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
+                    <i class="fas fa-graduation-cap text-primary-foreground"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold text-foreground">AttendanceApp</h1>
+                    <p class="text-sm text-muted-foreground">Student Portal</p>
+                </div>
+            </div>
+            
+            <div class="space-y-2">
+                <a href="#" class="nav-item flex items-center space-x-3 px-3 py-2 rounded-lg bg-primary text-primary-foreground" data-screen="home">
+                    <i class="fas fa-home w-5"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="#" class="nav-item flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-accent text-muted-foreground" data-screen="attendance">
+                    <i class="fas fa-calendar-check w-5"></i>
+                    <span>Attendance</span>
+                </a>
+                <a href="#" class="nav-item flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-accent text-muted-foreground" data-screen="history">
+                    <i class="fas fa-history w-5"></i>
+                    <span>History</span>
+                </a>
+                <a href="#" class="nav-item flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-accent text-muted-foreground" data-screen="chat">
+                    <i class="fas fa-comments w-5"></i>
+                    <span>Chat Room</span>
+                </a>
+                <a href="#" class="nav-item flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-accent text-muted-foreground" data-screen="calendar">
+                    <i class="fas fa-calendar w-5"></i>
+                    <span>Calendar</span>
+                </a>
+                <a href="#" class="nav-item flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-accent text-muted-foreground" data-screen="exams">
+                    <i class="fas fa-file-alt w-5"></i>
+                    <span>Exams</span>
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content Area -->
+    <main class="pt-16 pb-20 md:pt-0 md:pb-0 md:ml-64 min-h-screen">
+        
+        <!-- @COMPONENT: HomeScreen -->
+        <div id="home" class="screen active p-4 md:p-6">
+            <div class="max-w-6xl mx-auto">
+                <!-- Welcome Section -->
+                <div class="bg-card rounded-xl p-6 mb-6 border border-border">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h2 class="text-xl font-semibold text-foreground mb-1">Welcome back, Raj!</h2>
+                            <p class="text-muted-foreground">Roll No: CS2021001</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-sm text-muted-foreground">Today</p>
+                            <p class="text-lg font-medium text-foreground" data-bind="currentDate">Dec 12, 2024</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Stats -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                    <div class="bg-card rounded-lg p-4 border border-border">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-2xl font-bold text-foreground" data-bind="attendancePercentage">94%</p>
+                                <p class="text-sm text-muted-foreground">Attendance</p>
+                            </div>
+                            <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-chart-line text-green-600"></i>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-card rounded-lg p-4 border border-border">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-2xl font-bold text-foreground" data-bind="presentDays">47</p>
+                                <p class="text-sm text-muted-foreground">Present Days</p>
+                            </div>
+                            <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-calendar-check text-blue-600"></i>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-card rounded-lg p-4 border border-border">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-2xl font-bold text-foreground" data-bind="absentDays">3</p>
+                                <p class="text-sm text-muted-foreground">Absent Days</p>
+                            </div>
+                            <div class="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-calendar-times text-red-600"></i>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-card rounded-lg p-4 border border-border">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-2xl font-bold text-foreground" data-bind="upcomingExams">2</p>
+                                <p class="text-sm text-muted-foreground">Upcoming Exams</p>
+                            </div>
+                            <div class="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-file-alt text-orange-600"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Actions -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+                    <button class="bg-card rounded-xl p-6 border border-border hover:shadow-lg transition-shadow text-left group" data-screen="attendance">
+                        <div class="flex items-center space-x-4">
+                            <div class="w-12 h-12 bg-primary rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
+                                <i class="fas fa-camera text-primary-foreground"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-semibold text-foreground">Mark Attendance</h3>
+                                <p class="text-sm text-muted-foreground">Use face recognition</p>
+                            </div>
+                        </div>
+                    </button>
+                    
+                    <button class="bg-card rounded-xl p-6 border border-border hover:shadow-lg transition-shadow text-left group" data-screen="history">
+                        <div class="flex items-center space-x-4">
+                            <div class="w-12 h-12 bg-secondary rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
+                                <i class="fas fa-history text-secondary-foreground"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-semibold text-foreground">View History</h3>
+                                <p class="text-sm text-muted-foreground">Check past records</p>
+                            </div>
+                        </div>
+                    </button>
+                    
+                    <button class="bg-card rounded-xl p-6 border border-border hover:shadow-lg transition-shadow text-left group" data-screen="chat">
+                        <div class="flex items-center space-x-4">
+                            <div class="w-12 h-12 bg-green-500 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
+                                <i class="fas fa-comments text-white"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-semibold text-foreground">Chat Room</h3>
+                                <p class="text-sm text-muted-foreground">Connect with peers</p>
+                            </div>
+                        </div>
+                    </button>
+                </div>
+
+                <!-- Recent Activity -->
+                <div class="bg-card rounded-xl p-6 border border-border">
+                    <h3 class="text-lg font-semibold text-foreground mb-4">Recent Activity</h3>
+                    <div class="space-y-4">
+                        <!-- @MAP: recentActivities.map(activity => ( -->
+                        <div class="flex items-center space-x-4" data-mock="true">
+                            <div class="w-2 h-2 bg-green-500 rounded-full"></div>
+                            <div class="flex-1">
+                                <p class="text-sm font-medium text-foreground">Attendance marked for Mathematics</p>
+                                <p class="text-xs text-muted-foreground">Today, 10:30 AM</p>
+                            </div>
+                            <span class="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">Present</span>
+                        </div>
+                        
+                        <div class="flex items-center space-x-4" data-mock="true">
+                            <div class="w-2 h-2 bg-blue-500 rounded-full"></div>
+                            <div class="flex-1">
+                                <p class="text-sm font-medium text-foreground">New exam scheduled</p>
+                                <p class="text-xs text-muted-foreground">Yesterday, 3:45 PM</p>
+                            </div>
+                            <span class="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">Info</span>
+                        </div>
+                        
+                        <div class="flex items-center space-x-4" data-mock="true">
+                            <div class="w-2 h-2 bg-orange-500 rounded-full"></div>
+                            <div class="flex-1">
+                                <p class="text-sm font-medium text-foreground">Missed Physics class</p>
+                                <p class="text-xs text-muted-foreground">Dec 10, 2:00 PM</p>
+                            </div>
+                            <span class="text-xs bg-red-100 text-red-700 px-2 py-1 rounded-full">Absent</span>
+                        </div>
+                        <!-- @END_MAP )) -->
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- @END_COMPONENT: HomeScreen -->
+
+        <!-- @COMPONENT: AttendanceScreen -->
+        <div id="attendance" class="screen p-4 md:p-6">
+            <div class="max-w-4xl mx-auto">
+                <div class="mb-6">
+                    <h2 class="text-2xl font-bold text-foreground mb-2">Mark Attendance</h2>
+                    <p class="text-muted-foreground">Today, December 12, 2024</p>
+                </div>
+
+                <!-- Location Status -->
+                <div class="bg-card rounded-xl p-6 mb-6 border border-border">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="font-semibold text-foreground">Location Verification</h3>
+                        <span class="text-sm bg-green-100 text-green-700 px-3 py-1 rounded-full" data-bind="locationStatus">✓ On Campus</span>
+                    </div>
+                    <div class="flex items-center space-x-3 text-sm text-muted-foreground">
+                        <i class="fas fa-map-marker-alt"></i>
+                        <span data-bind="currentLocation">Engineering Block A, Room 101</span>
+                    </div>
+                </div>
+
+                <!-- Face Recognition Section -->
+                <div class="bg-card rounded-xl p-6 mb-6 border border-border">
+                    <h3 class="font-semibold text-foreground mb-4">Face Recognition</h3>
+                    <div class="text-center">
+                        <div class="w-48 h-48 mx-auto mb-4 bg-muted rounded-xl border-2 border-dashed border-border flex items-center justify-center">
+                            <div class="text-center">
+                                <i class="fas fa-camera text-4xl text-muted-foreground mb-2"></i>
+                                <p class="text-sm text-muted-foreground">Click to start camera</p>
+                            </div>
+                        </div>
+                        <button class="bg-primary text-primary-foreground px-6 py-3 rounded-lg hover:bg-primary/90 transition-colors" onclick="startFaceScanner()">
+                            <i class="fas fa-camera mr-2"></i>
+                            Start Face Scan
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Manual Attendance -->
+                <div class="bg-card rounded-xl p-6 border border-border">
+                    <h3 class="font-semibold text-foreground mb-4">Manual Attendance</h3>
+                    <div class="space-y-4">
+                        <div class="grid grid-cols-3 gap-3">
+                            <button class="p-4 rounded-lg border-2 border-green-200 bg-green-50 text-green-700 hover:bg-green-100 transition-colors">
+                                <i class="fas fa-check text-2xl mb-2"></i>
+                                <p class="font-medium">Present</p>
+                            </button>
+                            <button class="p-4 rounded-lg border-2 border-red-200 bg-red-50 text-red-700 hover:bg-red-100 transition-colors">
+                                <i class="fas fa-times text-2xl mb-2"></i>
+                                <p class="font-medium">Absent</p>
+                            </button>
+                            <button class="p-4 rounded-lg border-2 border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100 transition-colors">
+                                <i class="fas fa-clock text-2xl mb-2"></i>
+                                <p class="font-medium">Leave</p>
+                            </button>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-foreground mb-2">Reason (if absent/leave)</label>
+                            <textarea class="w-full p-3 border border-input rounded-lg bg-background text-foreground placeholder:text-muted-foreground" rows="3" placeholder="Enter reason..."></textarea>
+                        </div>
+                        
+                        <button class="w-full bg-secondary text-secondary-foreground py-3 rounded-lg hover:bg-secondary/90 transition-colors">
+                            Submit Attendance
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- @END_COMPONENT: AttendanceScreen -->
+
+        <!-- @COMPONENT: HistoryScreen -->
+        <div id="history" class="screen p-4 md:p-6">
+            <div class="max-w-6xl mx-auto">
+                <div class="mb-6">
+                    <h2 class="text-2xl font-bold text-foreground mb-2">Attendance History</h2>
+                    <p class="text-muted-foreground">View and export your attendance records</p>
+                </div>
+
+                <!-- Filters -->
+                <div class="bg-card rounded-xl p-6 mb-6 border border-border">
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-foreground mb-2">From Date</label>
+                            <input type="date" class="w-full p-3 border border-input rounded-lg bg-background text-foreground" value="2024-01-01">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-foreground mb-2">To Date</label>
+                            <input type="date" class="w-full p-3 border border-input rounded-lg bg-background text-foreground" value="2024-12-12">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-foreground mb-2">Subject</label>
+                            <select class="w-full p-3 border border-input rounded-lg bg-background text-foreground">
+                                <option>All Subjects</option>
+                                <option>Mathematics</option>
+                                <option>Physics</option>
+                                <option>Chemistry</option>
+                                <option>Computer Science</option>
+                            </select>
+                        </div>
+                        <div class="flex items-end space-x-2">
+                            <button class="flex-1 bg-primary text-primary-foreground py-3 px-4 rounded-lg hover:bg-primary/90 transition-colors">
+                                Filter
+                            </button>
+                            <button class="bg-secondary text-secondary-foreground py-3 px-4 rounded-lg hover:bg-secondary/90 transition-colors">
+                                <i class="fas fa-download"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Summary Stats -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                    <div class="bg-card rounded-lg p-4 border border-border">
+                        <p class="text-2xl font-bold text-green-600" data-bind="totalPresent">47</p>
+                        <p class="text-sm text-muted-foreground">Present</p>
+                    </div>
+                    <div class="bg-card rounded-lg p-4 border border-border">
+                        <p class="text-2xl font-bold text-red-600" data-bind="totalAbsent">3</p>
+                        <p class="text-sm text-muted-foreground">Absent</p>
+                    </div>
+                    <div class="bg-card rounded-lg p-4 border border-border">
+                        <p class="text-2xl font-bold text-orange-600" data-bind="totalLeave">2</p>
+                        <p class="text-sm text-muted-foreground">Leave</p>
+                    </div>
+                    <div class="bg-card rounded-lg p-4 border border-border">
+                        <p class="text-2xl font-bold text-blue-600" data-bind="attendancePercent">94%</p>
+                        <p class="text-sm text-muted-foreground">Percentage</p>
+                    </div>
+                </div>
+
+                <!-- Attendance Table -->
+                <div class="bg-card rounded-xl border border-border overflow-hidden">
+                    <div class="p-6 border-b border-border">
+                        <h3 class="font-semibold text-foreground">Attendance Records</h3>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full">
+                            <thead class="bg-muted">
+                                <tr>
+                                    <th class="text-left p-4 font-medium text-foreground">Date</th>
+                                    <th class="text-left p-4 font-medium text-foreground">Subject</th>
+                                    <th class="text-left p-4 font-medium text-foreground">Time</th>
+                                    <th class="text-left p-4 font-medium text-foreground">Status</th>
+                                    <th class="text-left p-4 font-medium text-foreground">Method</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- @MAP: attendanceRecords.map(record => ( -->
+                                <tr class="border-b border-border" data-mock="true">
+                                    <td class="p-4 text-foreground">Dec 12, 2024</td>
+                                    <td class="p-4 text-foreground">Mathematics</td>
+                                    <td class="p-4 text-muted-foreground">10:30 AM</td>
+                                    <td class="p-4">
+                                        <span class="bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs font-medium">Present</span>
+                                    </td>
+                                    <td class="p-4 text-muted-foreground">Face Recognition</td>
+                                </tr>
+                                <tr class="border-b border-border" data-mock="true">
+                                    <td class="p-4 text-foreground">Dec 11, 2024</td>
+                                    <td class="p-4 text-foreground">Physics</td>
+                                    <td class="p-4 text-muted-foreground">2:00 PM</td>
+                                    <td class="p-4">
+                                        <span class="bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs font-medium">Present</span>
+                                    </td>
+                                    <td class="p-4 text-muted-foreground">Manual</td>
+                                </tr>
+                                <tr class="border-b border-border" data-mock="true">
+                                    <td class="p-4 text-foreground">Dec 10, 2024</td>
+                                    <td class="p-4 text-foreground">Chemistry</td>
+                                    <td class="p-4 text-muted-foreground">11:00 AM</td>
+                                    <td class="p-4">
+                                        <span class="bg-red-100 text-red-700 px-2 py-1 rounded-full text-xs font-medium">Absent</span>
+                                    </td>
+                                    <td class="p-4 text-muted-foreground">-</td>
+                                </tr>
+                                <!-- @END_MAP )) -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- @END_COMPONENT: HistoryScreen -->
+
+        <!-- @COMPONENT: ChatScreen -->
+        <div id="chat" class="screen p-4 md:p-6">
+            <div class="max-w-4xl mx-auto h-full flex flex-col">
+                <div class="mb-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h2 class="text-2xl font-bold text-foreground">Chat Room</h2>
+                            <p class="text-muted-foreground">General Discussion</p>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <div class="w-2 h-2 bg-green-500 rounded-full"></div>
+                            <span class="text-sm text-muted-foreground" data-bind="onlineCount">24 online</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Chat Messages -->
+                <div class="bg-card rounded-xl border border-border flex-1 flex flex-col">
+                    <div class="chat-messages flex-1 p-4 space-y-4">
+                        <!-- @MAP: chatMessages.map(message => ( -->
+                        <div class="flex space-x-3" data-mock="true">
+                            <div class="w-8 h-8 bg-primary rounded-full flex items-center justify-center flex-shrink-0">
+                                <span class="text-xs font-medium text-primary-foreground">AM</span>
+                            </div>
+                            <div class="flex-1">
+                                <div class="flex items-center space-x-2 mb-1">
+                                    <span class="font-medium text-foreground text-sm">Amit Kumar</span>
+                                    <span class="text-xs text-muted-foreground">2:30 PM</span>
+                                </div>
+                                <p class="text-sm text-foreground">Hey everyone! Did anyone attend the Physics lab today?</p>
+                            </div>
+                        </div>
+
+                        <div class="flex space-x-3" data-mock="true">
+                            <div class="w-8 h-8 bg-secondary rounded-full flex items-center justify-center flex-shrink-0">
+                                <span class="text-xs font-medium text-secondary-foreground">PR</span>
+                            </div>
+                            <div class="flex-1">
+                                <div class="flex items-center space-x-2 mb-1">
+                                    <span class="font-medium text-foreground text-sm">Priya Sharma</span>
+                                    <span class="text-xs text-muted-foreground">2:32 PM</span>
+                                </div>
+                                <p class="text-sm text-foreground">Yes! We worked on the optics experiment. It was really interesting.</p>
+                            </div>
+                        </div>
+
+                        <div class="flex space-x-3 justify-end" data-mock="true">
+                            <div class="flex-1 max-w-xs">
+                                <div class="flex items-center justify-end space-x-2 mb-1">
+                                    <span class="text-xs text-muted-foreground">2:35 PM</span>
+                                    <span class="font-medium text-foreground text-sm">You</span>
+                                </div>
+                                <div class="bg-primary text-primary-foreground rounded-lg p-3">
+                                    <p class="text-sm">Thanks! I missed it due to medical appointment. Can you share the notes?</p>
+                                </div>
+                            </div>
+                            <div class="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0">
+                                <span class="text-xs font-medium text-white">RJ</span>
+                            </div>
+                        </div>
+                        <!-- @END_MAP )) -->
+                    </div>
+
+                    <!-- Chat Input -->
+                    <div class="p-4 border-t border-border">
+                        <div class="flex space-x-3">
+                            <input type="text" placeholder="Type your message..." class="flex-1 p-3 border border-input rounded-lg bg-background text-foreground placeholder:text-muted-foreground">
+                            <button class="bg-primary text-primary-foreground p-3 rounded-lg hover:bg-primary/90 transition-colors">
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- @END_COMPONENT: ChatScreen -->
+
+        <!-- @COMPONENT: CalendarScreen -->
+        <div id="calendar" class="screen p-4 md:p-6">
+            <div class="max-w-6xl mx-auto">
+                <div class="mb-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h2 class="text-2xl font-bold text-foreground">College Calendar</h2>
+                            <p class="text-muted-foreground">Upcoming events and important dates</p>
+                        </div>
+                        <button class="bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors">
+                            <i class="fas fa-plus mr-2"></i>
+                            Add Event
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Calendar View -->
+                <div class="bg-card rounded-xl border border-border mb-6">
+                    <div class="p-6 border-b border-border">
+                        <div class="flex items-center justify-between">
+                            <h3 class="text-lg font-semibold text-foreground">December 2024</h3>
+                            <div class="flex space-x-2">
+                                <button class="p-2 hover:bg-accent rounded-lg">
+                                    <i class="fas fa-chevron-left text-muted-foreground"></i>
+                                </button>
+                                <button class="p-2 hover:bg-accent rounded-lg">
+                                    <i class="fas fa-chevron-right text-muted-foreground"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Calendar Grid -->
+                    <div class="p-6">
+                        <div class="grid grid-cols-7 gap-1 mb-4">
+                            <div class="p-2 text-center text-sm font-medium text-muted-foreground">Sun</div>
+                            <div class="p-2 text-center text-sm font-medium text-muted-foreground">Mon</div>
+                            <div class="p-2 text-center text-sm font-medium text-muted-foreground">Tue</div>
+                            <div class="p-2 text-center text-sm font-medium text-muted-foreground">Wed</div>
+                            <div class="p-2 text-center text-sm font-medium text-muted-foreground">Thu</div>
+                            <div class="p-2 text-center text-sm font-medium text-muted-foreground">Fri</div>
+                            <div class="p-2 text-center text-sm font-medium text-muted-foreground">Sat</div>
+                        </div>
+                        
+                        <div class="grid grid-cols-7 gap-1">
+                            <!-- Calendar dates -->
+                            <div class="aspect-square p-2 text-center text-sm text-muted-foreground">1</div>
+                            <div class="aspect-square p-2 text-center text-sm text-muted-foreground">2</div>
+                            <div class="aspect-square p-2 text-center text-sm text-muted-foreground">3</div>
+                            <div class="aspect-square p-2 text-center text-sm text-muted-foreground">4</div>
+                            <div class="aspect-square p-2 text-center text-sm text-muted-foreground">5</div>
+                            <div class="aspect-square p-2 text-center text-sm text-muted-foreground">6</div>
+                            <div class="aspect-square p-2 text-center text-sm text-muted-foreground">7</div>
+                            <div class="aspect-square p-2 text-center text-sm text-muted-foreground">8</div>
+                            <div class="aspect-square p-2 text-center text-sm text-muted-foreground">9</div>
+                            <div class="aspect-square p-2 text-center text-sm text-muted-foreground">10</div>
+                            <div class="aspect-square p-2 text-center text-sm text-muted-foreground">11</div>
+                            <div class="aspect-square p-2 text-center text-sm bg-primary text-primary-foreground rounded-lg font-medium">12</div>
+                            <div class="aspect-square p-2 text-center text-sm text-muted-foreground">13</div>
+                            <div class="aspect-square p-2 text-center text-sm text-muted-foreground">14</div>
+                            <div class="aspect-square p-2 text-center text-sm text-muted-foreground relative">
+                                15
+                                <div class="w-1 h-1 bg-red-500 rounded-full absolute bottom-1 left-1/2 transform -translate-x-1/2"></div>
+                            </div>
+                            <!-- More calendar dates... -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Upcoming Events -->
+                <div class="bg-card rounded-xl border border-border">
+                    <div class="p-6 border-b border-border">
+                        <h3 class="font-semibold text-foreground">Upcoming Events</h3>
+                    </div>
+                    <div class="p-6 space-y-4">
+                        <!-- @MAP: upcomingEvents.map(event => ( -->
+                        <div class="flex items-center space-x-4 p-4 border border-border rounded-lg" data-mock="true">
+                            <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-calendar text-blue-600"></i>
+                            </div>
+                            <div class="flex-1">
+                                <h4 class="font-medium text-foreground">Mid-term Examinations</h4>
+                                <p class="text-sm text-muted-foreground">December 15-20, 2024</p>
+                            </div>
+                            <span class="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">Exam</span>
+                        </div>
+                        
+                        <div class="flex items-center space-x-4 p-4 border border-border rounded-lg" data-mock="true">
+                            <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-flask text-green-600"></i>
+                            </div>
+                            <div class="flex-1">
+                                <h4 class="font-medium text-foreground">Science Fair</h4>
+                                <p class="text-sm text-muted-foreground">December 22, 2024</p>
+                            </div>
+                            <span class="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">Event</span>
+                        </div>
+                        <!-- @END_MAP )) -->
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- @END_COMPONENT: CalendarScreen -->
+
+        <!-- @COMPONENT: ExamsScreen -->
+        <div id="exams" class="screen p-4 md:p-6">
+            <div class="max-w-6xl mx-auto">
+                <div class="mb-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h2 class="text-2xl font-bold text-foreground">Exam Schedule</h2>
+                            <p class="text-muted-foreground">View and manage exam schedules</p>
+                        </div>
+                        <button class="bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors">
+                            <i class="fas fa-plus mr-2"></i>
+                            Add Exam
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Exam Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <!-- @MAP: examSchedule.map(exam => ( -->
+                    <div class="bg-card rounded-xl border border-border p-6" data-mock="true">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="font-semibold text-foreground">Mathematics</h3>
+                            <span class="text-xs bg-red-100 text-red-700 px-2 py-1 rounded-full">Upcoming</span>
+                        </div>
+                        <div class="space-y-3">
+                            <div class="flex items-center space-x-3">
+                                <i class="fas fa-calendar text-muted-foreground"></i>
+                                <span class="text-sm text-foreground">December 15, 2024</span>
+                            </div>
+                            <div class="flex items-center space-x-3">
+                                <i class="fas fa-clock text-muted-foreground"></i>
+                                <span class="text-sm text-foreground">10:00 AM - 1:00 PM</span>
+                            </div>
+                            <div class="flex items-center space-x-3">
+                                <i class="fas fa-map-marker-alt text-muted-foreground"></i>
+                                <span class="text-sm text-foreground">Hall A, Block 1</span>
+                            </div>
+                        </div>
+                        <div class="mt-4 pt-4 border-t border-border">
+                            <div class="flex space-x-2">
+                                <button class="flex-1 bg-muted text-muted-foreground py-2 px-3 rounded-lg text-sm hover:bg-accent transition-colors">
+                                    Edit
+                                </button>
+                                <button class="flex-1 bg-secondary text-secondary-foreground py-2 px-3 rounded-lg text-sm hover:bg-secondary/90 transition-colors">
+                                    Remind
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-card rounded-xl border border-border p-6" data-mock="true">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="font-semibold text-foreground">Physics</h3>
+                            <span class="text-xs bg-red-100 text-red-700 px-2 py-1 rounded-full">Upcoming</span>
+                        </div>
+                        <div class="space-y-3">
+                            <div class="flex items-center space-x-3">
+                                <i class="fas fa-calendar text-muted-foreground"></i>
+                                <span class="text-sm text-foreground">December 17, 2024</span>
+                            </div>
+                            <div class="flex items-center space-x-3">
+                                <i class="fas fa-clock text-muted-foreground"></i>
+                                <span class="text-sm text-foreground">2:00 PM - 5:00 PM</span>
+                            </div>
+                            <div class="flex items-center space-x-3">
+                                <i class="fas fa-map-marker-alt text-muted-foreground"></i>
+                                <span class="text-sm text-foreground">Hall B, Block 2</span>
+                            </div>
+                        </div>
+                        <div class="mt-4 pt-4 border-t border-border">
+                            <div class="flex space-x-2">
+                                <button class="flex-1 bg-muted text-muted-foreground py-2 px-3 rounded-lg text-sm hover:bg-accent transition-colors">
+                                    Edit
+                                </button>
+                                <button class="flex-1 bg-secondary text-secondary-foreground py-2 px-3 rounded-lg text-sm hover:bg-secondary/90 transition-colors">
+                                    Remind
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- @END_MAP )) -->
+                </div>
+            </div>
+        </div>
+        <!-- @END_COMPONENT: ExamsScreen -->
+
+    </main>
+
+    <!-- Mobile Bottom Navigation -->
+    <nav class="mobile-nav fixed bottom-0 left-0 right-0 bg-card border-t border-border md:hidden">
+        <div class="grid grid-cols-5 h-16">
+            <button class="nav-item flex flex-col items-center justify-center space-y-1 text-primary" data-screen="home">
+                <i class="fas fa-home text-lg"></i>
+                <span class="text-xs">Home</span>
+            </button>
+            <button class="nav-item flex flex-col items-center justify-center space-y-1 text-muted-foreground" data-screen="attendance">
+                <i class="fas fa-calendar-check text-lg"></i>
+                <span class="text-xs">Attend</span>
+            </button>
+            <button class="nav-item flex flex-col items-center justify-center space-y-1 text-muted-foreground" data-screen="history">
+                <i class="fas fa-history text-lg"></i>
+                <span class="text-xs">History</span>
+            </button>
+            <button class="nav-item flex flex-col items-center justify-center space-y-1 text-muted-foreground" data-screen="chat">
+                <i class="fas fa-comments text-lg"></i>
+                <span class="text-xs">Chat</span>
+            </button>
+            <button class="nav-item flex flex-col items-center justify-center space-y-1 text-muted-foreground" data-screen="calendar">
+                <i class="fas fa-calendar text-lg"></i>
+                <span class="text-xs">Calendar</span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Face Scanner Overlay -->
+    <div class="face-scanner-overlay" id="faceScanner">
+        <div class="flex-1 flex flex-col">
+            <!-- Camera Header -->
+            <div class="flex items-center justify-between p-4 text-white">
+                <button onclick="closeFaceScanner()" class="p-2 hover:bg-white/10 rounded-lg">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+                <h3 class="font-semibold">Face Recognition</h3>
+                <button class="p-2 hover:bg-white/10 rounded-lg">
+                    <i class="fas fa-cog text-xl"></i>
+                </button>
+            </div>
+
+            <!-- Camera View -->
+            <div class="flex-1 flex items-center justify-center p-4">
+                <div class="relative">
+                    <div class="w-80 h-80 bg-gray-800 rounded-xl border-4 border-white/20 flex items-center justify-center">
+                        <div class="text-center text-white">
+                            <i class="fas fa-user text-6xl mb-4 opacity-50"></i>
+                            <p class="text-lg font-medium">Position your face in the frame</p>
+                            <p class="text-sm opacity-75 mt-2">Make sure you're in good lighting</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Face detection overlay -->
+                    <div class="absolute inset-0 border-2 border-green-400 rounded-xl opacity-0 animate-pulse" id="faceDetected"></div>
+                    
+                    <!-- Corner indicators -->
+                    <div class="absolute top-4 left-4 w-6 h-6 border-l-2 border-t-2 border-white"></div>
+                    <div class="absolute top-4 right-4 w-6 h-6 border-r-2 border-t-2 border-white"></div>
+                    <div class="absolute bottom-4 left-4 w-6 h-6 border-l-2 border-b-2 border-white"></div>
+                    <div class="absolute bottom-4 right-4 w-6 h-6 border-r-2 border-b-2 border-white"></div>
+                </div>
+            </div>
+
+            <!-- Controls -->
+            <div class="p-6 text-center">
+                <div class="flex items-center justify-center space-x-4 mb-4">
+                    <button class="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center text-white">
+                        <i class="fas fa-camera text-xl"></i>
+                    </button>
+                </div>
+                <p class="text-white text-sm">Tap to capture when face is detected</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // TODO: Implement business logic, API calls, and state management
+        
+        // Navigation functionality
+        (function() {
+            const navItems = document.querySelectorAll('.nav-item');
+            const screens = document.querySelectorAll('.screen');
+
+            function showScreen(screenId) {
+                screens.forEach(screen => {
+                    screen.classList.remove('active');
+                });
+                
+                navItems.forEach(item => {
+                    item.classList.remove('text-primary', 'bg-primary', 'text-primary-foreground');
+                    item.classList.add('text-muted-foreground', 'hover:bg-accent');
+                });
+
+                const targetScreen = document.getElementById(screenId);
+                if (targetScreen) {
+                    targetScreen.classList.add('active');
+                }
+
+                // Update active nav item
+                const activeNavItems = document.querySelectorAll(`[data-screen="${screenId}"]`);
+                activeNavItems.forEach(item => {
+                    item.classList.remove('text-muted-foreground', 'hover:bg-accent');
+                    item.classList.add('text-primary');
+                    if (item.closest('.desktop-nav')) {
+                        item.classList.add('bg-primary', 'text-primary-foreground');
+                    }
+                });
+            }
+
+            navItems.forEach(item => {
+                item.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const screenId = item.getAttribute('data-screen');
+                    if (screenId) {
+                        showScreen(screenId);
+                    }
+                });
+            });
+
+            // Handle quick action buttons
+            document.querySelectorAll('button[data-screen]').forEach(button => {
+                button.addEventListener('click', (e) => {
+                    const screenId = button.getAttribute('data-screen');
+                    if (screenId) {
+                        showScreen(screenId);
+                    }
+                });
+            });
+        })();
+
+        // Face scanner functionality
+        function startFaceScanner() {
+            document.getElementById('faceScanner').classList.add('active');
+            // TODO: Initialize face-api.js and camera stream
+        }
+
+        function closeFaceScanner() {
+            document.getElementById('faceScanner').classList.remove('active');
+            // TODO: Stop camera stream and cleanup
+        }
+
+        // Theme toggle functionality
+        function toggleTheme() {
+            document.documentElement.classList.toggle('dark');
+            // TODO: Save theme preference to localStorage
+        }
+
+        // Geolocation functionality
+        (function() {
+            // TODO: Implement geofence checking using Geolocation API
+            if ('geolocation' in navigator) {
+                navigator.geolocation.getCurrentPosition(
+                    function(position) {
+                        const lat = position.coords.latitude;
+                        const lng = position.coords.longitude;
+                        // TODO: Check if coordinates are within campus geofence
+                        console.log('Current position:', lat, lng);
+                    },
+                    function(error) {
+                        console.error('Geolocation error:', error);
+                    }
+                );
+            }
+        })();
+
+        // Socket.IO chat functionality
+        (function() {
+            // TODO: Initialize Socket.IO client connection
+            // TODO: Handle real-time message broadcasting
+            // TODO: Persist recent messages to localStorage
+            
+            const chatInput = document.querySelector('#chat input[type="text"]');
+            const sendButton = document.querySelector('#chat button');
+            
+            if (chatInput && sendButton) {
+                sendButton.addEventListener('click', function() {
+                    const message = chatInput.value.trim();
+                    if (message) {
+                        // TODO: Send message via Socket.IO
+                        chatInput.value = '';
+                    }
+                });
+                
+                chatInput.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        sendButton.click();
+                    }
+                });
+            }
+        })();
+
+        // Initialize app
+        (function() {
+            // TODO: Check authentication status
+            // TODO: Load user data and attendance statistics
+            // TODO: Initialize real-time connections
+            
+            // Update current date
+            const dateElements = document.querySelectorAll('[data-bind="currentDate"]');
+            const currentDate = new Date().toLocaleDateString('en-US', { 
+                year: 'numeric', 
+                month: 'short', 
+                day: 'numeric' 
+            });
+            dateElements.forEach(el => el.textContent = currentDate);
+        })();
+    </script>
+</body>
+</html>
