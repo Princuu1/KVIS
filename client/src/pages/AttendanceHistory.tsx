@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import Nav from "@/components/Nav";
-import { useAttendance, AttendanceRecord } from "@/hooks/useattendance";
+import useAttendance from "@/hooks/useAttendance";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
