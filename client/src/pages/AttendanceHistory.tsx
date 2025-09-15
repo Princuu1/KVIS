@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import Nav from "@/components/Nav";
-import useAttendance from "@/hooks/useAttendance";
+import { useAttendance, type AttendanceRecord } from "@/hooks/useAttendance";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -17,6 +17,7 @@ export default function AttendanceHistory() {
         Loading attendance...
       </div>
     );
+
   if (isError)
     return (
       <div className="pt-28 text-center text-red-600">
@@ -24,6 +25,7 @@ export default function AttendanceHistory() {
       </div>
     );
 
+  // TS now infers this correctly
   let records: AttendanceRecord[] = data?.records ?? [];
 
   // Apply date filter
